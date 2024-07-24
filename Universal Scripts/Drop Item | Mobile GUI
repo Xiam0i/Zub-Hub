@@ -1,0 +1,96 @@
+local UserInputService = game:GetService("UserInputService")
+local VirtualInputManager = game:GetService("VirtualInputManager")
+local player = game.Players.LocalPlayer
+local playerGui = player:WaitForChild("PlayerGui")
+
+local backspaceActive = false
+local guiPosition = UDim2.new(0.425, 0, 0.425, 0)
+
+local function simulateBackspace()
+    if backspaceActive then
+        VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.Backspace, false, game)
+        VirtualInputManager:SendKeyEvent(false, Enum.KeyCode.Backspace, false, game)
+    end
+end
+
+local function onInput(input)
+    if input.UserInputType == Enum.UserInputType.Touch and backspaceActive then
+        simulateBackspace()
+        wait(0.1)
+        backspaceActive = false
+    end
+end
+
+local function createGui()
+    local existingGui = playerGui:FindFirstChild("DropItemGui")
+    if existingGui then
+        existingGui:Destroy()
+    end
+
+    local screenGui = Instance.new("ScreenGui")
+    screenGui.Name = "DropItemGui"
+    screenGui.Parent = playerGui
+
+    local frame = Instance.new("Frame")
+    frame.Size = UDim2.new(0.15, 0, 0.15, 0)
+    frame.Position = guiPosition
+    frame.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+    frame.BackgroundTransparency = 0.5
+    frame.BorderSizePixel = 0
+    frame.Parent = screenGui
+
+    local corner = Instance.new("UICorner")
+    corner.CornerRadius = UDim.new(0, 15)
+    corner.Parent = frame
+
+    local button = Instance.new("TextButton")
+    button.Size = UDim2.new(0.8, 0, 0.8, 0)
+    button.Position = UDim2.new(0.1, 0, 0.1, 0)
+    button.Text = "Drop Item"
+    button.TextScaled = true
+    button.TextColor3 = Color3.fromRGB(255, 255, 255)
+    button.BackgroundColor3 = Color3.fromRGB(100, 100, 100)
+    button.BorderSizePixel = 0
+    button.Parent = frame
+
+    local buttonCorner = Instance.new("UICorner")
+    buttonCorner.CornerRadius = UDim.new(0, 10)
+    buttonCorner.Parent = button
+
+    local dragging
+    local dragStart
+    local startPos
+
+    local function updatePosition(input)
+        local delta = input.Position - dragStart
+        frame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+        guiPosition = frame.Position
+    end
+
+    frame.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+            dragging = true
+            dragStart = input.Position
+            startPos = frame.Position
+            input.Changed:Connect(function()
+                if input.UserInputState == Enum.UserInputState.End then
+                    dragging = false
+                end
+            end)
+        end
+    end)
+
+    frame.InputChanged:Connect(function(input)
+        if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
+            updatePosition(input)
+        end
+    end)
+
+    button.MouseButton1Click:Connect(function()
+        backspaceActive = true
+    end)
+end
+
+UserInputService.InputBegan:Connect(onInput)
+createGui()
+player.CharacterAdded:Connect(createGui)
